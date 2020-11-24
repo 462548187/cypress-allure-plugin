@@ -1,4 +1,3 @@
-require('./afterHook');
 require('./commands');
 
 const {
@@ -18,6 +17,7 @@ const { AllureRuntime, InMemoryAllureWriter } = require('allure-js-commons');
 const AllureReporter = require('./mocha-allure/AllureReporter');
 const stubbedAllure = require('./stubbedAllure');
 const allureEnabled = Cypress.env('allure') === true;
+const allureDebug = Cypress.env('allureDebug') === true;
 
 class CypressAllureReporter {
     constructor() {
@@ -34,8 +34,24 @@ class CypressAllureReporter {
             .on(EVENT_SUITE_BEGIN, (suite) => {
                 this.reporter.startSuite(suite.fullTitle());
             })
-            .on(EVENT_SUITE_END, () => {
-                this.reporter.endSuite();
+            .on(EVENT_SUITE_END, (suite) => {
+                /**
+                 * only global cypress file suite end
+                 * should be triggered from here
+                 * others are handled on suite start event
+                 */
+                const isGlobal = suite.title === '';
+                this.reporter.endSuite(isGlobal);
+                allureEnabled &&
+                    isGlobal &&
+                    cy
+                        .now(
+                            'task',
+                            'writeAllureResults',
+                            this.reporter.runtime.config,
+                            { log: false }
+                        )
+                        .catch((e) => allureDebug && console.log(e));
             })
             .on(EVENT_TEST_BEGIN, (test) => {
                 this.reporter.startCase(test);
@@ -51,18 +67,13 @@ class CypressAllureReporter {
             })
             .on(EVENT_TEST_END, () => {
                 this.reporter.handleCucumberTags();
+                this.reporter.endTest();
             })
             .on(EVENT_HOOK_BEGIN, (hook) => {
                 this.reporter.startHook(hook);
             })
             .on(EVENT_HOOK_END, (hook) => {
                 this.reporter.endHook(hook);
-                /**
-                 * suite should be restarted
-                 * to make `each` level hooks be set for tests separately
-                 */
-                hook.title === '"after each" hook' &&
-                    this.reporter.restartSuite();
             });
 
         Cypress.on('command:enqueued', (command) => {

@@ -53,6 +53,7 @@ Allure.prototype.stepStart = function (name) {
 
     const step = executable.startStep(name);
     this.reporter.pushStep(step);
+    return step;
 };
 
 Allure.prototype.stepEnd = function () {
