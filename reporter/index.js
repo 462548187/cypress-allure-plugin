@@ -51,7 +51,7 @@ class CypressAllureReporter {
                             this.reporter.runtime.config,
                             { log: false }
                         )
-                        .catch((e) => allureDebug && console.log(e));
+                        .catch((e) => allureDebug && console.error(e));
             })
             .on(EVENT_TEST_BEGIN, (test) => {
                 this.reporter.startCase(test);
@@ -110,6 +110,18 @@ Cypress.Allure = allureEnabled ? new CypressAllureReporter() : stubbedAllure;
 
 Cypress.Screenshot.defaults({
     onAfterScreenshot(el, details) {
-        allureEnabled && Cypress.Allure.reporter.screenshots.push(details);
+        if (allureEnabled) {
+            cy.now('task', 'copyScreenshotForAllure', details.path, {
+                log: false
+            })
+                .then((filePath) => {
+                    filePath &&
+                        Cypress.Allure.reporter.screenshots.push({
+                            ...details,
+                            ...{ path: filePath }
+                        });
+                })
+                .catch((e) => allureDebug && console.error(e));
+        }
     }
 });

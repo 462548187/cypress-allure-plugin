@@ -211,9 +211,7 @@ module.exports = class AllureReporter {
                 executable.addAttachment(
                     `${s.specName}:${s.takenAt}`,
                     ContentType.PNG,
-                    Cypress && Cypress.platform === 'win32'
-                        ? s.path.split('\\').pop()
-                        : path.basename(s.path)
+                    s.path
                 );
             });
         this.screenshots = [];
